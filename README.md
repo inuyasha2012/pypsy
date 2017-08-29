@@ -68,3 +68,10 @@ GH积分只能计算低维度的参数估计
     * 自适应认知诊断
     * 其他自适应
 * 代码注释、测试和文档
+
+## 参考文献
+* [DINA Model and Parameter Estimation: A Didactic](http://www.stat.cmu.edu/~brian/PIER-methods/For%202013-03-04/Readings/de%20la%20Torre-dina-est-115-30-jebs.pdf)
+* [Higher-order latent trait models for cognitive diagnosis](http://www.aliquote.org/pub/delatorre2004.pdf)
+* [Full-Information Item Factor Analysis.](http://conservancy.umn.edu/bitstream/11299/104282/1/v12n3p261.pdf)
+* [Multidimensional adaptive testing](http://media.metrik.de/uploads/incoming/pub/Literatur/1996_Multidimensional%20adaptive%20testing.pdf)
+* [Derivative free gradient projection algorithms for rotation]()
