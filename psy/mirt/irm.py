@@ -3,8 +3,8 @@ import warnings
 from itertools import combinations
 import numpy as np
 from psy.utils import inverse_logistic, get_nodes_weights
-from psy.rotations import GPForth
-from psy.settings import x_weights, x_nodes
+from psy.fa import GPForth, Factor
+from psy.settings import X_WEIGHTS, X_NODES
 
 
 class BaseIrt(object):
@@ -56,7 +56,7 @@ class Irt2PL(BaseIrt):
         return slop * theta + threshold
 
     def _est_item_parameter(self, slop, threshold, theta, p_val):
-        full_dis, right_dis = self._get_theta_dis(p_val, x_weights)
+        full_dis, right_dis = self._get_theta_dis(p_val, X_WEIGHTS)
         dp = right_dis - full_dis * p_val
         ddp = full_dis * p_val * (1 - p_val)
         jac1 = np.sum(dp, axis=0)
@@ -82,9 +82,9 @@ class Irt2PL(BaseIrt):
         slop = self._init_slop
         threshold = self._init_threshold
         for i in range(max_iter):
-            z = self.z(slop, threshold, x_nodes)
+            z = self.z(slop, threshold, X_NODES)
             p_val = self.p(z)
-            slop, threshold, delta_list = self._est_item_parameter(slop, threshold, x_nodes, p_val)
+            slop, threshold, delta_list = self._est_item_parameter(slop, threshold, X_NODES, p_val)
             if np.max(np.abs(delta_list)) < tol:
                 print i
                 return slop, threshold
@@ -193,13 +193,13 @@ class Mirt2PL(BaseIrt):
             slop, threshold, slop_delta_list, threshold_delta_list = self._est_item_parameter(slop, threshold, self._nodes, p_val)
             if np.max(np.abs(slop_delta_list)) < tol and np.max(np.abs(threshold_delta_list)) < tol:
                 print(i)
-                return slop, threshold, self._get_factor(slop)
+                return slop, threshold, self._get_factor_loadings(slop)
         warnings.warn("no convergence, the smallest delta is %s" %
                       max(np.max(np.abs(slop_delta_list)), np.max(np.abs(threshold_delta_list))))
-        return slop, threshold, self._get_factor(slop)
+        return slop, threshold, self._get_factor_loadings(slop)
 
     @staticmethod
-    def _get_factor(slop):
+    def _get_factor_loadings(slop):
         d = (1 + np.sum((slop / 1.702) ** 2, axis=0)) ** 0.5
         d.shape = 1, d.shape[0]
         init_loadings = slop / (d * 1.702)
@@ -207,10 +207,7 @@ class Mirt2PL(BaseIrt):
         return loadings
 
     def _get_init_slop_threshold(self, dim_size):
-        score_cor = np.corrcoef(self.scores.transpose())
-        score_polycor = np.abs(score_cor) ** (1 / 1.15) * np.sign(score_cor)
-        score_eig = np.linalg.eig(score_polycor)
-        loadings = -1 * score_eig[1][:, :dim_size]
+        loadings = Factor(self.scores.transpose(), dim_size, 'polycor').loadings
         loadings_tr = loadings.transpose()
         d = (1 - np.sum(loadings_tr ** 2, axis=0)) ** 0.5
         init_slop = loadings_tr / d * 1.702
