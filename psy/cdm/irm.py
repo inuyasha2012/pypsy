@@ -23,6 +23,7 @@ class Dina(object):
 
     @cached_property
     def _skills_size(self):
+        # 被试技能数量，也是试题属性数量
         return self._attrs.shape[0]
 
     def get_yita(self, skills):
@@ -39,6 +40,7 @@ class Dina(object):
         return no_slip ** yita * guess ** (1 - yita)
 
     def get_p(self, yita, no_slip, guess):
+        # 答对的概率值
         p_val = self._get_p(yita, no_slip, guess)
         p_val[p_val <= 0] = 1e-10
         p_val[p_val >= 1] = 1 - 1e-10
@@ -55,6 +57,7 @@ class BaseEmDina(Dina):
         return np.dot(log_p_val, score.transpose()) + np.dot(log_q_val, (1 - score).transpose())
 
     def _get_all_skills(self):
+        # 获得所有可能被试技能的排列组合
         size = self._skills_size
         return np.array(list(product([0, 1], repeat=size)))
 
@@ -67,6 +70,7 @@ class MlDina(BaseEmDina):
         self._no_slip = no_slip
 
     def solve(self):
+        # 已知项目参数下的被试技能极大似然估计求解
         skills = self._get_all_skills()
         yita = self.get_yita(skills)
         p_val = self.get_p(yita, self._no_slip, self._guess)
@@ -85,22 +89,26 @@ class EmDina(BaseEmDina):
         self._tol = tol
 
     def _posterior(self, p_val):
+        # 后验似然函数
         attr_size = self._skills_size
         return np.exp(self._loglik(p_val) + 1.0 / attr_size)
 
     def _posterior_normalize(self, p_val):
+        # 这个主要是起归一化的作用
         posterior = self._posterior(p_val)
         return posterior / np.sum(posterior, axis=0)
 
     @staticmethod
     def _skill_dis(posterior_normalize):
+        # 每种技能组合的人数分布
         return np.sum(posterior_normalize, axis=1)
 
-    def _get_skill_01_dis(self, posterior_normalize):
-        skill0_dis = np.repeat(self._skill_dis(posterior_normalize), self.item_size)
-        skill0_dis.shape = posterior_normalize.shape[0], self.item_size
-        skill1_dis = skill0_dis.copy()
-        return skill0_dis, skill1_dis
+    def _get_init_yita_item_dis(self, posterior_normalize):
+        # 每道题都搞个人数分布，1是0的复制，0用于yita为0情况，1个用于yita为1情况
+        yita_item_dis_0 = np.repeat(self._skill_dis(posterior_normalize), self.item_size)
+        yita_item_dis_0.shape = posterior_normalize.shape[0], self.item_size
+        yita_item_dis_1 = yita_item_dis_0.copy()
+        return yita_item_dis_0, yita_item_dis_1
 
     def em(self):
         skills = self._get_all_skills()
@@ -113,16 +121,18 @@ class EmDina(BaseEmDina):
         for i in range(max_iter):
             p_val = self.get_p(yita_val, no_slip, guess)
             post_normalize = self._posterior_normalize(p_val)
-            skill0_dis, skill1_dis = self._get_skill_01_dis(post_normalize)
-            skill0_item1_post_normalize = np.dot(post_normalize, score)
-            skill1_item1_post_normalize = skill0_item1_post_normalize.copy()
+            yita_item_dis_0, yita_item_dis_1 = self._get_init_yita_item_dis(post_normalize)
 
-            skill0_item1_dis, skill0_item_dis, skill1_item1_dis, skill1_item_dis = self._get_skill_item_dis(
-                skill0_dis, skill0_item1_post_normalize, skill1_dis, skill1_item1_post_normalize, yita_val
+            # 回答正确的归一化数, 1是0的复制，0用于yita为0情况，1用于yita为1情况
+            yita_item1_post_normalize_0 = np.dot(post_normalize, score)
+            yita_item1_post_normalize_1 = yita_item1_post_normalize_0.copy()
+
+            yita0_item1_dis, yita0_item_dis, yita1_item1_dis, yita1_item_dis = self._get_yita_item_dis(
+                yita_item_dis_0, yita_item1_post_normalize_0, yita_item_dis_1, yita_item1_post_normalize_1, yita_val
             )
 
-            guess_temp = self._get_est_guess(skill0_item1_dis, skill0_item_dis)
-            no_slip_temp = self._get_est_no_slip(skill1_item1_dis, skill1_item_dis)
+            guess_temp = self._get_est_guess(yita0_item1_dis, yita0_item_dis)
+            no_slip_temp = self._get_est_no_slip(yita1_item1_dis, yita1_item_dis)
 
             if max(np.max(np.abs(guess - guess_temp)), np.max(np.abs(no_slip - no_slip_temp))) < tol:
                 return no_slip_temp, guess_temp
@@ -133,28 +143,33 @@ class EmDina(BaseEmDina):
         raise ConvergenceError('no Convergence')
 
     @staticmethod
-    def _get_skill_item_dis(skill0_dis, skill0_item1_post_normalize, skill1_dis,
-                            skill1_item1_post_normalize, yita_val):
-        skill0_dis[yita_val == 1] = 0
-        skill0_item_dis = np.sum(skill0_dis, axis=0)
-        skill0_item_dis[skill0_item_dis <= 0] = 1e-10
-        skill0_item1_post_normalize[yita_val == 1] = 0
-        skill0_item1_dis = np.sum(skill0_item1_post_normalize, axis=0)
-        skill1_dis[yita_val == 0] = 0
-        skill1_item_dis = np.sum(skill1_dis, axis=0)
-        skill1_item1_post_normalize[yita_val == 0] = 0
-        skill1_item1_dis = np.sum(skill1_item1_post_normalize, axis=0)
-        return skill0_item1_dis, skill0_item_dis, skill1_item1_dis, skill1_item_dis
+    def _get_yita_item_dis(yita_item_dis_0, yita_item1_post_normalize_0, yita_item_dis_1,
+                           yita_item1_post_normalize_1, yita_val):
+        yita_item_dis_0[yita_val == 1] = 0
+        # yita值为0的人数分布
+        yita0_item_dis = np.sum(yita_item_dis_0, axis=0)
+        yita0_item_dis[yita0_item_dis <= 0] = 1e-10
+        yita_item1_post_normalize_0[yita_val == 1] = 0
+        # yita值为0回答正确的人数分布
+        yita0_item1_dis = np.sum(yita_item1_post_normalize_0, axis=0)
+
+        yita_item_dis_1[yita_val == 0] = 0
+        # yita值为1的人数分布
+        yita1_item_dis = np.sum(yita_item_dis_1, axis=0)
+        yita_item1_post_normalize_1[yita_val == 0] = 0
+        # yita值为1回答正确的人数分布
+        yita1_item1_dis = np.sum(yita_item1_post_normalize_1, axis=0)
+        return yita0_item1_dis, yita0_item_dis, yita1_item1_dis, yita1_item_dis
 
     @staticmethod
-    def _get_est_guess(skill0_item1_dis, skill0_item_dis):
-        guess = skill0_item1_dis / skill0_item_dis
+    def _get_est_guess(yita0_item1_dis, yita0_item_dis):
+        guess = yita0_item1_dis / yita0_item_dis
         guess[guess <= 0] = 1e-10
         return guess
 
     @staticmethod
-    def _get_est_no_slip(skill1_item1_dis, skill1_item_dis):
-        no_slip = 1 - (skill1_item_dis - skill1_item1_dis) / skill1_item_dis
+    def _get_est_no_slip(yita1_item1_dis, yita1_item_dis):
+        no_slip = 1 - (yita1_item_dis - yita1_item1_dis) / yita1_item_dis
         no_slip[no_slip >= 1] = 1 - 1e-10
         return no_slip
 
@@ -168,6 +183,7 @@ class BaseMcmcDina(Dina):
         self.thin = thin
 
     def _get_item_params_tran(self, skills, no_slip, guess, next_no_slip, next_guess):
+        # 项目参数转移概率函数
         yita_val = self.get_yita(skills)
         pre = self._get_loglik(yita_val, no_slip, guess, axis=0) + get_log_beta_pd(no_slip, guess)
         nxt = self._get_loglik(yita_val, next_no_slip, next_guess, axis=0) + get_log_beta_pd(next_no_slip, next_guess)
@@ -181,6 +197,7 @@ class BaseMcmcDina(Dina):
         return np.sum(score * np.log(p_val) + (1 - score) * np.log(1 - p_val), axis)
 
     def _get_item_params_init(self, size):
+        # 初始值
         skills = np.ones((self._people_size, self._skills_size))
         skills_list = np.zeros((size, self._people_size, self._skills_size))
         no_slip = np.zeros((1, self.item_size)) + 0.7
@@ -190,6 +207,7 @@ class BaseMcmcDina(Dina):
         return guess, guess_list, no_slip, no_slip_list, skills, skills_list
 
     def _get_item_params_tran_res(self, skills, no_slip, guess):
+        # 项目参数转移的结果
         next_no_slip = np.random.uniform(no_slip - 0.1, no_slip + 0.1)
         next_no_slip[next_no_slip <= 0.4] = 0.4 + 1e-10
         next_no_slip[next_no_slip >= 1] = 1 - 1e-10
@@ -206,6 +224,7 @@ class BaseMcmcDina(Dina):
 class McmcDina(BaseMcmcDina):
 
     def _get_skills_tran(self, skills, no_slip, guess, next_skills):
+        # 被试技能参数转移概率函数
         yita_val = self.get_yita(skills)
         pre = self._get_loglik(yita_val, no_slip, guess, axis=1)
         next_yita_val = self.get_yita(next_skills)
@@ -230,6 +249,7 @@ class McmcDina(BaseMcmcDina):
         return est_skills, est_no_slip, est_guess
 
     def _get_skills_tran_res(self, skills, no_slip, guess):
+        # 被试技能参数转移结果
         next_skills = np.random.binomial(1, 0.5, skills.shape)
         tran_skills = self._get_skills_tran(skills, no_slip, guess, next_skills)
         skills_r = np.random.uniform(0, 1, tran_skills.shape)
@@ -241,17 +261,20 @@ class McmcHoDina(BaseMcmcDina):
 
     @staticmethod
     def get_skills_p(lam0, lam1, theta):
+        # 高阶能力
         exp_z = np.exp(theta * lam1 + lam0)
         p_val = exp_z / (1.0 + exp_z)
         return p_val
 
     def _get_skills_pd(self, skills, theta, lam0, lam1, axis):
+        # 高阶能力的概率密度函数
         p_val = self.get_skills_p(lam0, lam1, theta)
         p_val[p_val <= 0] = 1e-10
         p_val[p_val >= 1] = 1 - 1e-10
         return np.sum(skills * np.log(p_val) + (1 - skills) * np.log(1 - p_val), axis)
 
     def _get_skills_tran(self, skills, no_slip, guess, theta, lam0, lam1, next_skills):
+        # 被试技能转移概率
         yita_val = self.get_yita(skills)
         pre = self._get_loglik(yita_val, no_slip, guess, axis=1) + \
             self._get_skills_pd(skills, theta, lam0, lam1, 1)
@@ -263,6 +286,7 @@ class McmcHoDina(BaseMcmcDina):
         return res
 
     def _get_theta_tran(self, skills, theta, lam0, lam1, next_theta):
+        # 高阶能力转移概率
         pre = self._get_skills_pd(skills, theta, lam0, lam1, 1) + get_log_normal_pd(theta)[:, 0]
         nxt = self._get_skills_pd(skills, next_theta, lam0, lam1, 1) + get_log_normal_pd(next_theta)[:, 0]
         res = np.exp(nxt - pre)
@@ -270,6 +294,7 @@ class McmcHoDina(BaseMcmcDina):
         return res
 
     def _get_lam_tran(self, skills, theta, lam0, lam1, next_lam0, next_lam1):
+        # 高阶参数转移概率
         pre = self._get_skills_pd(skills, theta, lam0, lam1, 0) + get_log_normal_pd(lam0) + \
             get_log_lognormal_pd(lam1)
         nxt = self._get_skills_pd(skills, theta, next_lam0, next_lam1, 0) + get_log_normal_pd(next_lam0) + \
@@ -279,6 +304,7 @@ class McmcHoDina(BaseMcmcDina):
         return res
 
     def _get_skills_tran_res(self, skills, no_slip, guess, theta, lam0, lam1):
+        # 被试技能转移结果
         next_skills = np.random.binomial(1, 0.5, skills.shape)
         tran_skills = self._get_skills_tran(skills, no_slip, guess, theta, lam0, lam1, next_skills)
         skills_r = np.random.uniform(0, 1, tran_skills.shape)

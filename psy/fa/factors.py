@@ -14,6 +14,7 @@ class Factor(object):
 
     @cached_property
     def cor(self):
+        # 相关矩阵
         scores_cor = np.corrcoef(self._scores)
         return scores_cor
 
@@ -24,6 +25,7 @@ class Factor(object):
 
     @property
     def loadings(self):
+        # 因子载荷
         cov = getattr(self, self._cov_mat_type)
         score_eig = np.linalg.eig(cov)
         loadings = -1 * score_eig[1][:, :self._factors_num]

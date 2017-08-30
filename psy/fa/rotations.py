@@ -40,6 +40,7 @@ class GPForth(object):
 
     @staticmethod
     def varimax(l):
+        # varimax选装
         mean = np.mean(l ** 2, axis=0)
         mean.shape = 1, mean.shape[0]
         ql = l ** 2 - mean

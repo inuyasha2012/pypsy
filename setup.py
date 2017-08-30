@@ -8,5 +8,5 @@ setup(
     license='',
     author='inuyasha',
     author_email='',
-    description=''
+    description='', requires=['numpy', 'progressbar2']
 )
