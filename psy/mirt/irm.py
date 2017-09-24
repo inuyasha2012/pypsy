@@ -236,7 +236,7 @@ class Mirt2PL(BaseIrt):
         # 求初始值
         # 斜率是因子分析后的因子载荷转化
         # 阈值是logistic函数的反函数转化
-        loadings = Factor(self.scores.transpose(), dim_size, 'polycor').loadings
+        loadings = Factor(self.scores.transpose(), dim_size).mirt_loading
         loadings_tr = loadings.transpose()
         d = (1 - np.sum(loadings_tr ** 2, axis=0)) ** 0.5
         init_slop = loadings_tr / d * 1.702
