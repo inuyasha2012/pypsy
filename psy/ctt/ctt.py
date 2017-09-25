@@ -33,17 +33,24 @@ class BaseCtt(object):
         return item_size / (item_size - 1) * (1 - sum_items_var / sum_scores_var)
 
 
-class Ctt(BaseCtt):
+class BivariateCtt(BaseCtt):
 
     def get_discrimination(self):
+        # 区分度
         scores = self._scores
+        # 题目分数均值
         scores_mean = np.mean(scores, axis=0)
+        # 总分均值
         sum_scores_mean = np.mean(self.sum_scores)
+        # 中心化
         center = (scores - scores_mean) * (self.sum_scores - sum_scores_mean)
+        # 协方差
         cov = np.mean(center, axis=0)
+        # 方差
         std = np.std(scores, axis=0) * np.std(self.sum_scores)
         return cov / std
 
     def get_difficulty(self):
+        # 难度(通俗度)
         return np.mean(self._scores, axis=0)
 
