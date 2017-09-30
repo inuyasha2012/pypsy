@@ -15,7 +15,7 @@ class BaseCtt(object):
 
     def get_composite_reliability(self):
         # 组合信度
-        f = Factor(self._scores.transpose(), 1)
+        f = Factor(self._scores, 1)
         loadings = f.loadings
         lambda_sum_square = np.sum(loadings) ** 2
         lambda_square_sum = np.sum(loadings ** 2)

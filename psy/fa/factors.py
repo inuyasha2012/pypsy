@@ -14,7 +14,7 @@ class Factor(object):
     @cached_property
     def cor(self):
         # 相关矩阵
-        scores_cor = np.corrcoef(self._scores)
+        scores_cor = np.corrcoef(self._scores.transpose())
         return scores_cor
 
     @cached_property
