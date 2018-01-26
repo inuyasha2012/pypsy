@@ -1,8 +1,7 @@
 # coding=utf-8
-from __future__ import division, print_function
+from __future__ import division, print_function, unicode_literals
 import numpy as np
-
-from psy.ctt import Ctt
+from psy.ctt import BivariateCtt
 
 # 单个试题的模拟信度
 R_LIST = [0.5, 0.55, 0.60, 0.65, 0.7]
@@ -34,7 +33,7 @@ while true_r >= 0.9:
         true_r = var_total_t / var_total_x
 
 print(true_r)
-ctt = Ctt(scores=x_score_list)
+ctt = BivariateCtt(scores=x_score_list)
 # alpha系数
 print(ctt.get_alpha_reliability())
 # 组合信度

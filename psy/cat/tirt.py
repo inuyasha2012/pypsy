@@ -6,6 +6,8 @@ from psy.exceptions import ConvergenceError, ItemParamError, ScoreError, ThetaEr
 from psy.utils import cached_property, gen_item_bank
 import math
 
+# TODO FIX 奇异矩阵
+
 
 class BaseModel(object):
 
@@ -184,7 +186,7 @@ class MLLogitModel(BaseLogitModel):
 
     def _get_hessian_n_jacobian(self, theta):
         prob_val = self._prob(theta)
-        hes = np.linalg.inv(self._ddloglik(theta, prob_val))
+        hes = np.linalg.pinv(self._ddloglik(theta, prob_val))
         jac = self._dloglik(theta, prob_val)
         return hes, jac
 
@@ -312,7 +314,7 @@ class BaseSimTirt(object):
     MODEL = {'bayes_probit': BayesProbitModel, 'ml_probit': MLProbitModel,
              'bayes_logit': BayesLogitModel, 'ml_logit': MLLogitModel}
 
-    def __init__(self, subject_nums, trait_size, model='bayes_probit',
+    def __init__(self, subject_nums, trait_size, model='ml_logit',
                  iter_method='newton', block_size=3, lower=1, upper=4, avg=0, std=1):
         """
 
@@ -330,8 +332,8 @@ class BaseSimTirt(object):
             raise ValueError('subject_nums must be int')
         if not isinstance(trait_size, int):
             raise ValueError('trait_size must be int')
-        if model not in ('bayes_probit', 'bayes_logistic', 'ml_probit', 'ml_logistic'):
-            raise ValueError('mode must be bayes_probit or bayes_logistic or ml_probit or ml_logistic')
+        if model not in ('bayes_probit', 'bayes_logit', 'ml_probit', 'ml_logit'):
+            raise ValueError('mode must be bayes_probit or bayes_logit or ml_probit or ml_logit')
         if block_size not in (2, 3):
             raise ValueError('block_size must be 2 or 3')
         if not isinstance(lower, (int, float)):

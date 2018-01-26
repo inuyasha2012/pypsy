@@ -1,10 +1,9 @@
-from __future__ import print_function
-from psy.ctt import Ctt
+from __future__ import print_function, division, unicode_literals
+from psy.ctt import BivariateCtt
 import numpy as np
 
-f = file('lsat.csv')
-score = np.loadtxt(f, delimiter=",")
-ctt = Ctt(score)
+score = np.loadtxt('data/lsat.csv', delimiter=",")
+ctt = BivariateCtt(score)
 print(ctt.get_alpha_reliability())
 print(ctt.get_composite_reliability())
 print(ctt.get_discrimination())

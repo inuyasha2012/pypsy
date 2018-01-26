@@ -1,1 +1,1 @@
-from ctt import Ctt
+from ctt import BivariateCtt

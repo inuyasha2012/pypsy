@@ -1,3 +1,4 @@
+from __future__ import print_function, division, unicode_literals
 import numpy as np
 from psy import McmcDina
 from psy.utils import r4beta
