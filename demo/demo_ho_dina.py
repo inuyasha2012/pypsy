@@ -1,3 +1,5 @@
+# coding=utf-8
+# 认知诊断ho-dina模型的MCMC参数估计
 from __future__ import print_function, division, unicode_literals
 import numpy as np
 from psy import McmcHoDina

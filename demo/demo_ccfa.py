@@ -1,4 +1,5 @@
 # coding=utf-8
+# 属性数据下的验证性因子分析
 from __future__ import  print_function, division, unicode_literals
 import numpy as np
 from psy import delta_i_ccfa

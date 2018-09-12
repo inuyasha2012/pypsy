@@ -1,3 +1,5 @@
+# coding=utf-8
+# 自适应多维测验
 from __future__ import print_function, division, unicode_literals
 from psy import SimAdaptiveTirt
 

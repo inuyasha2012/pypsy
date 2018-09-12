@@ -1,1 +1,1 @@
-from ctt import BivariateCtt
+from psy.ctt.ctt import BivariateCtt

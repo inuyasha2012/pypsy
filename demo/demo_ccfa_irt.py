@@ -1,4 +1,5 @@
 # coding=utf-8
+# 利用属性数据下的验证性因子分析计算项目反应模型的参数
 from __future__ import  print_function, division, unicode_literals
 import numpy as np
 from psy import delta_i_ccfa, get_irt_parameter, get_thresholds

@@ -1,3 +1,5 @@
+# coding=utf-8
+# 经典测量理论
 from __future__ import print_function, division, unicode_literals
 from psy.ctt import BivariateCtt
 import numpy as np
