@@ -1,4 +1,188 @@
 # pypsy
+
+psychometrics package, including structural equation model, confirmatory factor analysis, unidimensional item response theory, multi-dimensional item response theory, cognitive diagnosis model, factor analysis and adaptive testing. The package is still a doll. will be finishing.
+
+
+## unidimensional item response theory
+
+### models
+
+* binary response data IRT (two parameters, three parameters).
+
+* grade respone data IRT (GRM model)
+
+
+## Parameter estimation algorithm
+
+* EM algorithm (two parameters model, grade response model)
+
+* MCMC algorithm (three parameters model)
+
+
+* * *
+
+
+## Multidimensional item response theory (full information item factor analysis)
+
+
+### Parameter estimation algorithm
+
+#### The initial value
+
+The approximate polychoric correlation is calculated, and the slope initial value is obtained by factor analysis of the correlation matrix.
+
+
+#### EM algorithm
+
+* E step uses GH integral.
+
+* M step uses Newton algorithm (sparse matrix is divided into non sparse matrix).
+
+
+#### Factor rotation
+
+Gradient projection algorithm
+
+
+### The shortcomings
+
+GH integrals can only estimate low dimensional parameters.
+
+
+* * *
+
+
+## Cognitive diagnosis model
+
+### models
+
+* Dina
+
+* ho-dina
+
+
+### parameter estimation algorithms
+
+* EM algorithm
+
+* MCMC algorithm
+
+* maximum likelihood estimation (only for estimating skill parameters of subjects)
+
+
+* * *
+
+
+## Structural equation model of the structure
+
+* contains three parameter estimation methods(ULS, ML and GLS).
+
+* based on gradient descent
+
+
+* * *
+
+
+## Confirmatory factor analysis
+
+* can be used for continuous data, binary data and ordered data.
+
+* based on gradient descent
+
+* binary and ordered data based on Polychoric correlation matrix.
+
+
+* * *
+
+
+## Factor analysis
+
+For the time being, only for the calculation of full information item factor analysis, it is very simple.
+
+
+### The algorithm
+
+principal component analysis
+
+
+### The rotation algorithm
+
+gradient projection
+
+
+* * *
+
+
+## Adaptive test (bug, to be repaired)
+
+### model
+
+Thurston IRT model (multidimensional item response theory model for personality test)
+
+
+### Algorithm
+
+Maximum information method for multidimensional item response theory
+
+
+## Require
+
+* numpy
+
+* progressbar2
+
+
+## How to use it
+
+See demo in detail
+
+
+## TODO LIST
+
+* theta parameterization of CCFA
+
+* parameter estimation of structural equation models for multivariate data
+
+* Bayesin knowledge tracing (Bayesian knowledge tracking)
+
+* multidimensional item response theory (full information item factor analysis)
+
+   * high dimensional computing algorithm (adaptive integral, etc.)
+
+   * various item response models
+
+* cognitive diagnosis model
+
+   * G-DINA model
+
+   * Q matrix correlation algorithm
+
+* Factor analysis
+
+   * maximum likelihood estimation
+
+   * various factor rotation algorithms
+
+* adaptive
+
+   * adaptive cognitive diagnosis
+
+   * other adaption model
+
+* standard error and P value
+
+* code annotation, testing and documentation.
+
+
+## Reference
+
+* [DINA Model and Parameter Estimation: A Didactic](http://www.stat.cmu.edu/~brian/PIER-methods/For%202013-03-04/Readings/de%20la%20Torre-dina-est-115-30-jebs.pdf)
+* [Higher-order latent trait models for cognitive diagnosis](http://www.aliquote.org/pub/delatorre2004.pdf)
+* [Full-Information Item Factor Analysis.](http://conservancy.umn.edu/bitstream/11299/104282/1/v12n3p261.pdf)
+* [Multidimensional adaptive testing](http://media.metrik.de/uploads/incoming/pub/Literatur/1996_Multidimensional%20adaptive%20testing.pdf)
+* [Derivative free gradient projection algorithms for rotation]()
+
+# pypsy
 自编心理测量库，包含结构方程模型，验证性因子分析，单维项目反应理论，多维项目反应理论，认知诊断，因子分析和自适应测验等等，还在整理中，仅供学习
 
 ## 单维项目反应理论
