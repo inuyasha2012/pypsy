@@ -1,6 +1,6 @@
 # pypsy
 
-psychometrics package, including structural equation model, confirmatory factor analysis, unidimensional item response theory, multi-dimensional item response theory, cognitive diagnosis model, factor analysis and adaptive testing. The package is still a doll. will be finishing.
+psychometrics package, including structural equation model, confirmatory factor analysis, unidimensional item response theory, multidimensional item response theory, cognitive diagnosis model, factor analysis and adaptive testing. The package is still a doll. will be finished in future.
 
 
 ## unidimensional item response theory
@@ -14,9 +14,9 @@ psychometrics package, including structural equation model, confirmatory factor 
 
 ## Parameter estimation algorithm
 
-* EM algorithm (two parameters model, grade response model)
+* EM algorithm (2PL, GRM)
 
-* MCMC algorithm (three parameters model)
+* MCMC algorithm (3PL）
 
 
 * * *
@@ -29,7 +29,7 @@ psychometrics package, including structural equation model, confirmatory factor 
 
 #### The initial value
 
-The approximate polychoric correlation is calculated, and the slope initial value is obtained by factor analysis of the correlation matrix.
+The approximate polychoric correlation is calculated, and the slope initial value is obtained by factor analysis of the polychoric correlation matrix.
 
 
 #### EM algorithm
@@ -73,7 +73,7 @@ GH integrals can only estimate low dimensional parameters.
 * * *
 
 
-## Structural equation model of the structure
+## Structural equation model
 
 * contains three parameter estimation methods(ULS, ML and GLS).
 
@@ -113,7 +113,7 @@ gradient projection
 * * *
 
 
-## Adaptive test (bug, to be repaired)
+## Adaptive test (bug, need to be repaired)
 
 ### model
 
