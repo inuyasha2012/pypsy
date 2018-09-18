@@ -24,7 +24,7 @@ def gen_item_bank(trait_size, item_size, block_size=3, lower=1, upper=4, avg=0, 
     :param upper: int|float
     :param avg: int|float
     :param std: int|float
-    :return: 
+    :return:
     """
     if not isinstance(trait_size, int):
         raise ValueError('trait_size must be int')
@@ -89,14 +89,14 @@ def _triplet_random_params(item_dt, trait_size, lower=1, upper=4, avg=0, std=1):
     :param upper: int(>lower), uniform分布的上界
     :return: tuple(ndarray, ndarray), 斜率和阈值
     """
-    keys = item_dt.keys()
+    keys = list(item_dt.keys())
     pair_nums = len(keys)
     keys.sort()
     a = np.zeros((pair_nums, trait_size))
     a1 = np.random.uniform(lower, upper, pair_nums)
     a2 = np.random.uniform(lower, upper, pair_nums)
 
-    for i in range(len(keys) / 3):
+    for i in range(int(len(keys) / 3)):
         i1 = item_dt[3 * i]
         i2 = item_dt[3 * i + 1]
         i3 = item_dt[3 * i + 2]
@@ -121,7 +121,7 @@ def random_params(item_dt, trait_size, block_size=3, lower=1, upper=4, avg=0, st
     :param upper: int|float
     :param avg: int|float
     :param std: int|float
-    :return: 
+    :return:
     """
     if not isinstance(item_dt, dict):
         raise ValueError('item_dt must be dict')
