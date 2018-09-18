@@ -90,8 +90,7 @@ class EmDina(BaseEmDina):
 
     def _posterior(self, p_val):
         # 后验似然函数
-        attr_size = self._skills_size
-        return np.exp(self._loglik(p_val) + 1.0 / attr_size)
+        return np.exp(self._loglik(p_val) + 1.0 / p_val.shape[0])
 
     def _posterior_normalize(self, p_val):
         # 这个主要是起归一化的作用

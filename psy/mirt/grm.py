@@ -86,8 +86,6 @@ class Grm(object):
         for i in range(self.item_size):
             right_dis_dt[i] = np.dot(_temp, scores[i])
         # full_dis.shape = full_dis.shape[0], 1
-        # 对数似然值
-        print(np.sum(np.log(lik_wt_sum)))
         return full_dis, right_dis_dt
 
     def _pq(self, p_val):
@@ -166,7 +164,6 @@ class Grm(object):
             p_val = self.p(z)
             slop, thresholds, delta_list = self._est_item_parameter(slop, thresholds, self.x_nodes, p_val)
             if np.max(np.abs(delta_list)) < tol:
-                print(i)
                 return slop, thresholds
         warnings.warn("no convergence")
         return slop, thresholds

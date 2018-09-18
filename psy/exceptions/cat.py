@@ -1,9 +1,3 @@
-class ConvergenceError(Exception):
-    """
-    no convergence
-    """
-
-
 class UnknownModelError(Exception):
     """
     unknown model

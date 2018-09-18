@@ -113,7 +113,7 @@ gradient projection
 * * *
 
 
-## Adaptive test (bug, need to be repaired)
+## Adaptive test
 
 ### model
 
@@ -250,7 +250,7 @@ GH积分只能计算低维度的参数估计
 
 * * *
 
-## 自适应测验（有bug，待修复）
+## 自适应测验
 ### 支持模型
 瑟斯顿IRT模型（用于人格测验的多维项目反应理论模型）
 

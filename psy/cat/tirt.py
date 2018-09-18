@@ -1,12 +1,12 @@
 # coding=utf-8
-from __future__ import print_function
+from __future__ import unicode_literals, print_function, absolute_import
+import math
+from functools import partial
 import numpy as np
 from scipy.stats import norm
-from psy.exceptions import ConvergenceError, ItemParamError, ScoreError, ThetaError, IterMethodError, UnknownModelError
+from psy.exceptions.cat import ItemParamError, ScoreError, ThetaError, IterMethodError, UnknownModelError
+from psy.exceptions import ConvergenceError
 from psy.utils import cached_property, gen_item_bank
-import math
-
-# TODO FIX 奇异矩阵
 
 
 class BaseModel(object):
@@ -22,7 +22,7 @@ class BaseModel(object):
     # 参数估计精度
     _tol = 1e-5
 
-    def __init__(self, slop, threshold, init_theta=None, score=None, iter_method='newton'):
+    def __init__(self, slop, threshold, init_theta=None, score=None, iter_method='newton', sigma=None):
         """
         不管是probit还是logit，都是用一样的参数估计算法，
         基于牛顿迭代的极大似然算法和贝叶斯最大后验算法
@@ -59,8 +59,10 @@ class BaseModel(object):
         self._threshold = threshold
         self._init_theta = init_theta if init_theta is not None else np.zeros(len(self._slop[0]))
         # 默认bayes先验正态分布标准差
-        # TODO 改为根据样本估计
-        self._inv_psi = np.identity(len(self._slop[0]))
+        if sigma is None:
+            self._inv_psi = np.identity(len(self._slop[0]))
+        else:
+            self._inv_psi = np.linalg.inv(sigma)
         self._iter_method = iter_method
 
     @property
@@ -99,7 +101,7 @@ class BaseModel(object):
     def _get_jacobian(self, theta):
         """
         抽象方法，目的是返回雅克比向量（矩阵），用于梯度上升
-        :param theta: 
+        :param theta:
         """
         raise NotImplementedError
 
@@ -137,94 +139,6 @@ class BaseModel(object):
         return getattr(self, self._iter_method)
 
 
-class BaseLogitModel(BaseModel):
-
-    # D值
-    D = 1.702
-
-    def _prob(self, theta):
-        """
-        答1的概率值
-        :param theta: ndarray(int|float), 特质向量初值
-        :return:  ndarray(float)，作答为1概率的向量值
-        """
-        e = np.exp(self.D * self._z(theta))
-        return e / (1.0 + e)
-
-    def _dloglik(self, theta, prob_val):
-        """
-        logistic对数似然函数的一阶导数
-        :param theta: ndarray(int|float), 特质向量初值
-        :param prob_val: ndarray(float)，作答为1概率的向量值
-        :return: 
-        """
-        return self.D * np.dot(self._slop.transpose(), self._score - prob_val)
-
-    def _expect(self, prob_val):
-        return self.D ** 2 * np.dot(self._slop.transpose() * prob_val * (1 - prob_val), self._slop)
-
-    def _ddloglik(self, theta, prob_val):
-        """
-        logistic对数似然函数的二阶导数
-        :param theta: ndarray(int|float), 特质向量初值
-        :param prob_val: ndarray(float)，作答为1概率的向量值
-        :return:
-        """
-        return -1 * self._expect(prob_val)
-
-    def info(self, theta):
-        # 信息矩阵
-        if not isinstance(theta, np.ndarray):
-            raise ThetaError('theta must be ndarray')
-        prob_val = self._prob(theta)
-        return self._expect(prob_val)
-
-
-class MLLogitModel(BaseLogitModel):
-
-    # 极大似然估计
-
-    def _get_hessian_n_jacobian(self, theta):
-        prob_val = self._prob(theta)
-        hes = np.linalg.pinv(self._ddloglik(theta, prob_val))
-        jac = self._dloglik(theta, prob_val)
-        return hes, jac
-
-    def _get_jacobian(self, theta):
-        prob_val = self._prob(theta)
-        return self._dloglik(theta, prob_val)
-
-
-class BayesLogitModel(BaseLogitModel):
-
-    # 贝叶斯modal估计
-
-    def _bayes_dloglik(self, theta, prob_val):
-        # 贝叶斯modal的一阶导数
-        return self._dloglik(theta, prob_val) - theta
-
-    def _bayes_ddloglik(self, theta, prob_val):
-        # 贝叶斯modal的二阶导数
-        return self._ddloglik(theta, prob_val) - self._inv_psi
-
-    def _get_hessian_n_jacobian(self, theta):
-        prob_val = self._prob(theta)
-        hes = np.linalg.inv(self._bayes_ddloglik(theta, prob_val))
-        jac = self._bayes_dloglik(theta, prob_val)
-        return hes, jac
-
-    def _get_jacobian(self, theta):
-        prob_val = self._prob(theta)
-        return self._bayes_dloglik(theta, prob_val)
-
-    def info(self, theta):
-        # 信息矩阵
-        if not isinstance(theta, np.ndarray):
-            raise ThetaError('theta must be ndarray')
-        _info = super(BayesLogitModel, self).info(theta)
-        return _info + self._inv_psi
-
-
 class BaseProbitModel(BaseModel):
 
     # probit基础模型
@@ -239,7 +153,6 @@ class BaseProbitModel(BaseModel):
 
     def _w(self, h, prob):
         # probit函数的w值，可以看成权重，方便计算和呈现
-
         pq = (1 - prob) * prob
         return h ** 2 / (pq + 1e-10)
 
@@ -266,27 +179,12 @@ class BaseProbitModel(BaseModel):
         return np.dot(self._slop.transpose() * w, self._slop)
 
 
-class MLProbitModel(BaseProbitModel):
-
-    # probit极大似然估计
-
-    def _get_hessian_n_jacobian(self, theta):
-        h, prob_val, w = self._get_h_prob_val_w(theta)
-        hes = np.linalg.inv(self._ddloglik(theta, w))
-        jac = self._dloglik(theta, prob_val, h, w)
-        return hes, jac
-
-    def _get_jacobian(self, theta):
-        h, prob_val, w = self._get_h_prob_val_w(theta)
-        return self._dloglik(theta, prob_val, h, w)
-
-
 class BayesProbitModel(BaseProbitModel):
 
     # 贝叶斯modal估计
 
     def _bayes_dloglik(self, theta, prob_val, h, w):
-        return self._dloglik(theta, prob_val, h, w) - theta
+        return self._dloglik(theta, prob_val, h, w) - np.dot(self._inv_psi, theta)
 
     def _bayes_ddloglik(self, theta, w):
         return self._ddloglik(theta, w) - self._inv_psi
@@ -311,10 +209,9 @@ class BayesProbitModel(BaseProbitModel):
 
 class BaseSimTirt(object):
 
-    MODEL = {'bayes_probit': BayesProbitModel, 'ml_probit': MLProbitModel,
-             'bayes_logit': BayesLogitModel, 'ml_logit': MLLogitModel}
+    MODEL = {'bayes_probit': BayesProbitModel}
 
-    def __init__(self, subject_nums, trait_size, model='ml_logit',
+    def __init__(self, subject_nums, trait_size, model='bayes_probit', sigma=None,
                  iter_method='newton', block_size=3, lower=1, upper=4, avg=0, std=1):
         """
 
@@ -322,7 +219,7 @@ class BaseSimTirt(object):
         :param trait_size: int, 特质数量
         :param iter_method: str
         :param model: str, 模型
-        :param block_size: int, 题块 
+        :param block_size: int, 题块
         :param lower: int|float
         :param upper: int|float
         :param avg: int|float
@@ -332,8 +229,8 @@ class BaseSimTirt(object):
             raise ValueError('subject_nums must be int')
         if not isinstance(trait_size, int):
             raise ValueError('trait_size must be int')
-        if model not in ('bayes_probit', 'bayes_logit', 'ml_probit', 'ml_logit'):
-            raise ValueError('mode must be bayes_probit or bayes_logit or ml_probit or ml_logit')
+        if model not in ('bayes_probit', ):
+            raise ValueError('mode must be bayes_probit')
         if block_size not in (2, 3):
             raise ValueError('block_size must be 2 or 3')
         if not isinstance(lower, (int, float)):
@@ -355,11 +252,11 @@ class BaseSimTirt(object):
         self._avg = avg
         self.std = std
         self._iter_method = iter_method
-        self._model = self._get_model(model)
+        self._model = self._get_model(model, sigma)
 
-    def _get_model(self, model):
+    def _get_model(self, model, sigma):
         try:
-            return self.MODEL[model]
+            return partial(self.MODEL[model], sigma=sigma)
         except KeyError:
             raise UnknownModelError('unknown model, must be "bayes_probit" or '
                                     '"ml_probit" or "bayes_logit" or "ml_logit"')
@@ -489,18 +386,20 @@ class SimAdaptiveTirt(BaseSimTirt):
 
     def _get_random_choice_params(self, theta_idx):
         first_rand_items = self._get_random_choice_items(theta_idx)
-        slop = []
-        threshold = []
-        for item in first_rand_items:
-            slop.extend(item['params'][0])
-            threshold.extend(item['params'][1])
-        return np.array(slop), np.array(threshold)
+        slop = np.zeros((len(first_rand_items) * self._block_size, self._trait_size))
+        threshold = np.zeros(len(first_rand_items) * self._block_size)
+        for i, item in enumerate(first_rand_items):
+            slop[i:i + self._block_size] = item['params'][0]
+            threshold[i:i + self._block_size] = item['params'][1]
+        return slop, threshold
 
     def _first_random(self, theta, theta_idx):
         # 第一阶段，随机抽题
         slop, threshold = self._get_random_choice_params(theta_idx)
         p_list = self._model(slop, threshold).prob(theta)
         score = np.random.binomial(1, p_list, len(p_list))
+        print('当前作答结果：')
+        print(score)
         init_theta = self._get_init_theta()
         model = self._model(slop, threshold, init_theta, score, self._iter_method)
         theta = model.solve
@@ -511,13 +410,10 @@ class SimAdaptiveTirt(BaseSimTirt):
 
     def _second_random(self, theta, theta_idx):
         item = self._get_next_item(theta_idx)
-
         score = self._get_next_score(item, theta, theta_idx)
-        # print score
-
+        print('当前作答结果:')
+        print(score)
         est_theta = self._get_estimate_theta(score, theta_idx)
-        # print est_theta
-        # print np.mean(np.abs(est_theta - theta))
         self._add_theta(theta_idx, est_theta)
         return est_theta
 
@@ -549,12 +445,13 @@ class SimAdaptiveTirt(BaseSimTirt):
         slop = self._get_slop(theta_idx)
         threshold = self._get_threshold(theta_idx)
         test_info = self._model(slop, threshold).info(est_theta)
-        info_list = []
-        for _item in items:
+        print('误差方差平均值：%f' % np.mean(np.diag(np.linalg.inv(test_info)) ** 0.5))
+        info_list = np.zeros_like(items)
+        for i, _item in enumerate(items):
             _slop, _threshold = _item['params']
             item_info = self._model(_slop, _threshold).info(est_theta)
-            info_list.append(np.linalg.det(test_info + item_info))
-        max_info_idx = np.array(info_list).argmax()
+            info_list[i] = np.linalg.det(test_info + item_info)
+        max_info_idx = info_list.argmax()
         item = items[max_info_idx]
         idx = list(self._get_can_use_idx(theta_idx))[max_info_idx]
         self._add_answered_item_idx(theta_idx, [idx])
@@ -562,19 +459,14 @@ class SimAdaptiveTirt(BaseSimTirt):
 
     def sim(self):
         thetas = self.random_thetas
-        theta_list = []
+        theta_list = np.zeros((self._subject_nums, self._trait_size))
         for i, theta in enumerate(thetas):
-            try:
-                est_theta = np.nan
-                self._first_random(theta, i)
-                for j in range(self._max_sec_item_size):
-                    est_theta = self._second_random(theta, i)
-                print(u'第{0}个被试模拟成功！'.format(i + 1))
-            except Exception as e:
-                print(e)
-                continue
-            theta_list.append(est_theta)
-        mean_error = self._get_mean_error(np.array(theta_list))
+            est_theta = np.nan
+            self._first_random(theta, i)
+            for j in range(self._max_sec_item_size):
+                est_theta = self._second_random(theta, i)
+            print(u'第{0}个被试模拟成功！'.format(i + 1))
+            theta_list[i] = est_theta
+        mean_error = self._get_mean_error(theta_list)
         print('模拟结束，平均误差{0}'.format(mean_error))
         return theta_list
-
