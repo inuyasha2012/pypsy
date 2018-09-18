@@ -23,6 +23,6 @@ def test_ho_dina():
     p_val = ho_dina.get_p(yita, guess=g, no_slip=no_s)
     score = np.random.binomial(1, p_val)
 
-    ho_dina_est = McmcHoDina(attrs=attrs, score=score, max_iter=10000, burn=5000)
+    ho_dina_est = McmcHoDina(attrs=attrs, score=score, max_iter=100, burn=50)
     ho_dina_est.mcmc()
 
