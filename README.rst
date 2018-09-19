@@ -9,9 +9,6 @@ pypsy
 
 `中文 <./README_ZH.rst>`_
 
-`DINA Model and Parameter Estimation: A
-   Didactic <http://www.stat.cmu.edu/~brian/PIER-methods/For%202013-03-04/Readings/de%20la%20Torre-dina-est-115-30-jebs.pdf>`
-
 psychometrics package, including structural equation model, confirmatory
 factor analysis, unidimensional item response theory, multidimensional
 item response theory, cognitive diagnosis model, factor analysis and
