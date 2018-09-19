@@ -14,7 +14,9 @@ install:
     - pip install coveralls
 
 # Command to run tests, e.g. python setup.py test
-script: tox
+script:
+    - tox
+    - py.test
 
 # Assuming you have installed the travis-ci CLI tool, after you
 # create the Github repo and add it to Travis, run the
