@@ -4,13 +4,13 @@
 .. image:: https://coveralls.io/repos/github/inuyasha2012/pypsy/badge.svg?branch=master
         :target: https://coveralls.io/github/inuyasha2012/pypsy?branch=master
 
+.. image:: https://img.shields.io/pypi/v/psy.svg
+        :target: https://pypi.python.org/pypi/psy
+
 pypsy
 =====
 
 `中文 <./README_ZH.rst>`_
-
-`DINA Model and Parameter Estimation: A
-   Didactic <http://www.stat.cmu.edu/~brian/PIER-methods/For%202013-03-04/Readings/de%20la%20Torre-dina-est-115-30-jebs.pdf>`
 
 psychometrics package, including structural equation model, confirmatory
 factor analysis, unidimensional item response theory, multidimensional
@@ -144,6 +144,8 @@ Algorithm
 
 Maximum information method for multidimensional item response theory
 
+--------------
+
 Require
 -------
 
@@ -151,10 +153,18 @@ Require
 
 -  progressbar2
 
+--------------
+
 How to use it
 -------------
 
-See demo in detail
+install
+~~~~~~~
+::
+
+    pip install psy
+
+See demo
 
 TODO LIST
 ---------
