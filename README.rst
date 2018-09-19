@@ -1,6 +1,9 @@
 .. image:: https://img.shields.io/travis/inuyasha2012/pypsy.svg
         :target: https://travis-ci.org/inuyasha2012/pypsy
 
+.. image:: https://coveralls.io/repos/github/inuyasha2012/pypsy/badge.svg?branch=master
+        :target: https://coveralls.io/github/inuyasha2012/pypsy?branch=master
+
 pypsy
 =====
 
