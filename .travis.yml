@@ -27,3 +27,6 @@ deploy:
     tags: true
     repo: inuyasha2012/pypsy
     python: 3.6
+
+after_success:
+    - coveralls
