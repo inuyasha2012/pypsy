@@ -1,9 +1,17 @@
 # coding=utf-8
 from __future__ import print_function, division, unicode_literals
 import numpy as np
-from psy import Irt2PL
+from psy import Irt
 
 
-def test():
-    score = np.loadtxt('data/lsat.csv', delimiter=",")
-    Irt2PL(scores=score).em()
+class TestIrt(object):
+
+    def test_probit(self):
+        score = np.loadtxt('data/lsat.csv', delimiter=",")
+        model = Irt(scores=score, link='probit')
+        model.fit()
+
+    def test_logit(self):
+        score = np.loadtxt('data/lsat.csv', delimiter=",")
+        model = Irt(scores=score, link='logit')
+        model.fit()
