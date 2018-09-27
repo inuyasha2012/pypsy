@@ -17,5 +17,5 @@ def test_mcmc_dina():
     p_val = temp.get_p(yita, guess=g, no_slip=no_s)
     score = np.random.binomial(1, p_val)
 
-    em_dina = McmcDina(attrs=attrs, score=score, max_iter=100, burn=50)
+    em_dina = McmcDina(attrs=attrs, score=score, max_iter=10, burn=5)
     em_dina.mcmc()

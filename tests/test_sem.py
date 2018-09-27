@@ -1,11 +1,11 @@
 # coding=utf-8
 from __future__ import division, print_function, unicode_literals
 import numpy as np
-from psy import sem
+from psy import sem, data
 
 
 def test_sem():
-    data = np.loadtxt('data/ex5.11.dat')
+    dat = data['ex5.11.dat']
     beta = np.array([
         [0, 0],
         [1, 0]
@@ -32,4 +32,4 @@ def test_sem():
         [0, 1],
         [0, 1],
     ])
-    sem(data, y, x, lam_x, lam_y, beta, gamma)
+    sem(dat, y, x, lam_x, lam_y, beta, gamma)

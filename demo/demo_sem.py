@@ -1,10 +1,10 @@
 # coding=utf-8
 # 结构方程模型的参数估计
 from __future__ import division, print_function, unicode_literals
+from psy import sem, data
 import numpy as np
-from psy import sem
 
-data = np.loadtxt('data/ex5.11.dat')
+data_ = data['ex5.11.dat']
 
 beta = np.array([
     [0, 0],
@@ -38,7 +38,7 @@ lam_y = np.array([
     [0, 1],
 ])
 
-lam_x, lam_y, phi_x, beta, gamma, var_e, var_e_x, var_e_y = sem(data, y, x, lam_x, lam_y, beta, gamma)
+lam_x, lam_y, phi_x, beta, gamma, var_e, var_e_x, var_e_y = sem(data_, y, x, lam_x, lam_y, beta, gamma)
 
 print('==========内源变量因子载荷=========')
 print(lam_x)

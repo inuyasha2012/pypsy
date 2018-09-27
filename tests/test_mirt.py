@@ -1,9 +1,8 @@
 # coding=utf-8
 from __future__ import print_function, division, unicode_literals
-import numpy as np
-from psy import Mirt2PL
+from psy import Mirt, data
 
 
 def test_mirt():
-    score = np.loadtxt('data/lsat.csv', delimiter=",")
-    Mirt2PL(scores=score, dim_size=2).em()
+    score = data['lsat.dat']
+    Mirt(scores=score, dim_size=2).em()

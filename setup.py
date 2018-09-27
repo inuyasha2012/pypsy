@@ -43,7 +43,7 @@ setup(
     include_package_data=True,
     keywords='psy',
     name='psy',
-    packages=find_packages(include=['psy']),
+    packages=find_packages(include=['psy', 'psydata']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,

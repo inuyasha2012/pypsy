@@ -7,6 +7,15 @@ import numpy as np
 class Grm(object):
 
     def __init__(self, scores=None, init_slop=None, init_threshold=None, max_iter=1000, tol=1e-5, gp_size=11):
+        """
+        GRM model
+        :param scores:
+        :param init_slop:
+        :param init_threshold:
+        :param max_iter:
+        :param tol:
+        :param gp_size:
+        """
         # 试题最大反应计算
         max_score = int(np.max(scores))
         min_score = int(np.min(scores))
@@ -82,11 +91,10 @@ class Grm(object):
         # theta的人数分布
         full_dis = np.sum(_temp, axis=1)
         # theta下回答的人数分布
-        right_dis_dt = {}
+        response_dis_dt = {}
         for i in range(self.item_size):
-            right_dis_dt[i] = np.dot(_temp, scores[i])
-        # full_dis.shape = full_dis.shape[0], 1
-        return full_dis, right_dis_dt
+            response_dis_dt[i] = np.dot(_temp, scores[i])
+        return full_dis, response_dis_dt
 
     def _pq(self, p_val):
         return p_val * (1 - p_val)
@@ -134,7 +142,7 @@ class Grm(object):
         ddloglik_val += ddloglik_val.transpose() - np.diag(ddloglik_val.diagonal())
         return ddloglik_val
 
-    def _m_step(self, p_val_dt, full_dis, right_dis_dt, slop, thresholds, theta):
+    def _m_step(self, p_val_dt, full_dis, response_dis_dt, slop, thresholds, theta):
         # M步，牛顿迭代
         rep_len = self._rep_len
         len_threshold = thresholds.shape[1]
@@ -142,8 +150,8 @@ class Grm(object):
         for i in range(self.item_size):
             p_val = p_val_dt[i]
             pq_val = self._pq(p_val)
-            right_dis = right_dis_dt[i]
-            jac = self._item_jac(p_val, pq_val, right_dis, len_threshold, rep_len, theta)
+            response_dis = response_dis_dt[i]
+            jac = self._item_jac(p_val, pq_val, response_dis, len_threshold, rep_len, theta)
             hess = self._item_hess(p_val, pq_val, full_dis, len_threshold, rep_len, theta)
             delta = np.linalg.solve(hess, jac)
             slop[i], thresholds[i] = slop[i] - delta[-1], thresholds[i] - delta[:-1]
