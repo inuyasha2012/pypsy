@@ -7,6 +7,9 @@
 .. image:: https://img.shields.io/pypi/v/psy.svg
         :target: https://pypi.python.org/pypi/psy
 
+.. image:: https://readthedocs.org/projects/python-psychometrics/badge/?version=latest
+        :target: https://python-psychometrics.readthedocs.io/en/latest/?badge=latest
+
 pypsy
 =====
 
