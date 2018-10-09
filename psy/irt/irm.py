@@ -4,7 +4,8 @@ import warnings
 import numpy as np
 from psy.irt.base import BaseEmIrt, ProbitMixin, LogitMixin, Logit3PLMixin
 from psy.settings import X_WEIGHTS, X_NODES
-from scipy.optimize import minimize
+from scipy.optimize import minimize, fmin_bfgs
+import statsmodels.api as sm
 
 class _Irt(BaseEmIrt):
 
@@ -22,7 +23,56 @@ class _Irt(BaseEmIrt):
         else:
             self._params_dt['threshold'] = np.zeros(self.item_size)
 
+    def _get_jac(self, dp, theta):
+        dp_sum = np.sum(dp, axis=0)
+        dp_theta = np.sum(dp * theta, axis=0)
+        return dp_sum, dp_theta
+
     def _m_step(self, full_dis, right_dis, theta, p_val, z_val, **params_dt):
+        # 一阶导数, 二阶导数
+        dp, ddp = self._get_dp_n_ddp(right_dis, full_dis, p_val)
+        # jac矩阵和hess矩阵
+        # jac = self._get_jac(dp, theta)
+        delta_list = np.zeros((self.item_size, 2))
+        hess_list = []
+
+        # 把求稀疏矩阵的逆转化成求每个题目的小矩阵的逆
+        def _item_loglik(params, instance, index):
+            # 似然函数
+            slop = params[0]
+            threshold = params[1]
+            z = instance.z(slop=slop, threshold=threshold, theta=X_NODES)
+            p_val = instance.p(z)
+            p_val[p_val <= 0] = 1e-10
+            p_val[p_val >= 1] = 1 - 1e-10
+            loglik_val = np.log(p_val) * right_dis[:, index][:, np.newaxis] + np.log(1 - p_val) * (full_dis - right_dis[:, index][:, np.newaxis])
+            return -np.sum(loglik_val)
+
+        def _jac(params, instance, index):
+            slop = params[0]
+            threshold = params[1]
+            z = instance.z(slop=slop, threshold=threshold, theta=X_NODES)
+            p_val = instance.p(z)
+            dp, ddp = instance._get_dp_n_ddp(right_dis[:, index][:, np.newaxis], full_dis, p_val)
+            dp_sum = np.sum(dp)
+            dp_theta = np.sum(dp * theta)
+            return -np.array([dp_theta, dp_sum])
+
+        slop = params_dt['slop']
+        threshold = params_dt['threshold']
+
+        for i in range(self.item_size):
+            res = fmin_bfgs(
+                _item_loglik,
+                np.array([slop[i], threshold[i]]),
+                _jac,
+                (self, i),
+            )
+            params_dt['slop'][i] = res[0]
+            params_dt['threshold'][i] = res[1]
+        return params_dt, delta_list, hess_list
+
+    def __m_step(self, full_dis, right_dis, theta, p_val, z_val, **params_dt):
         # 一阶导数, 二阶导数
         dp, ddp = self._get_dp_n_ddp(right_dis, full_dis, p_val, z_val)
         # jac矩阵和hess矩阵
@@ -73,19 +123,19 @@ class _Irt(BaseEmIrt):
         max_iter = self._max_iter
         tol = self._tol
         params_dt = self._params_dt
-        for i in range(max_iter):
+        for i in range(100):
             z = self.z(theta=X_NODES, **params_dt)
             p_val = self.p(z)
             full_dis, right_dis, loglik = self._e_step(p_val, X_WEIGHTS)
             params_dt, delta_list, hess_list = self._m_step(full_dis=full_dis,
-                                                                right_dis=right_dis,
-                                                                theta=X_NODES,
-                                                                p_val=p_val,
-                                                                z_val=z,
-                                                                **params_dt)
-            if np.max(np.abs(delta_list)) < tol:
-                return params_dt
-        warnings.warn("no convergence")
+                                                            right_dis=right_dis,
+                                                            theta=X_NODES,
+                                                            p_val=p_val,
+                                                            z_val=z,
+                                                            **params_dt)
+        #     if np.max(np.abs(delta_list)) < tol:
+        #         return params_dt
+        # warnings.warn("no convergence")
         return params_dt
 
 
@@ -129,11 +179,11 @@ class _Logit3PLIrt(BaseEmIrt, Logit3PLMixin):
         if init_threshold is not None:
             self._params_dt['threshold'] = init_threshold
         else:
-            self._params_dt['threshold'] = np.zeros(self.item_size)
+            self._params_dt['threshold'] = np.zeros(self.item_size) + 0.1
         if init_guess is not None:
             self._params_dt['guess'] = init_guess
         else:
-            self._params_dt['guess'] = np.zeros(self.item_size)
+            self._params_dt['guess'] = np.zeros(self.item_size) + 0.1
 
     def _get_dp_n_ddp(self, right_dis, full_dis, p_val, p_guess_val, *args, **kwargs):
         return right_dis * p_val / (p_guess_val + 1e-6) - full_dis * p_val, full_dis * p_val * (1 - p_val)
@@ -168,26 +218,44 @@ class _Logit3PLIrt(BaseEmIrt, Logit3PLMixin):
             dp, ddp = self._get_dp_n_ddp(right_dis[:, index][:, np.newaxis], full_dis, p_val, p_guess_val)
             dp_sum = np.sum(dp)
             dp_theta = np.sum(dp * theta)
-            dp_guess = np.sum(dp * (1 / (p_guess_val - guess)))
-            return np.array([dp_sum, dp_theta, dp_guess])
+            dp_guess = np.sum(dp * (1 / (p_guess_val - guess + 1e-10)))
+            return -np.array([dp_theta, dp_sum, dp_guess])
 
         slop = params_dt['slop']
         threshold = params_dt['threshold']
         guess = params_dt['guess']
 
+        v1 = _item_loglik((slop[0], threshold[0], guess[0]), 0)
+        v2 = _item_loglik((slop[0], threshold[0], guess[0] + 1e-4), 0)
+        d = (v2 - v1) / 1e-4
+        jac = _jac((slop[0], threshold[0], guess[0]), 0)
+
         for i in range(self.item_size):
-            res = minimize(
-                _item_loglik,
-                np.array([slop[i], threshold[i], guess[i]]),
-                (i, ),
-                'Nelder-Mead',
-                _jac,
-                options={'disp': True},
-                tol=1e-5
-            )
-            params_dt['slop'][i] = res.x[0]
-            params_dt['threshold'][i] = res.x[1]
-            params_dt['guess'][i] = res.x[2]
+            # res = minimize(
+            #     _item_loglik,
+            #     np.array([slop[i], threshold[i], guess[i]]),
+            #     (i, ),
+            #     'L-BFGS-B',
+            #     _jac,
+            #     options={'disp': True},
+            #     tol=1e-5
+            # )
+            # params_dt['slop'][i] = res.x[0]
+            # params_dt['threshold'][i] = res.x[1]
+            # params_dt['guess'][i] = res.x[2]
+            # if params_dt['guess'][i] > 1:
+            #     params_dt['guess'][i] = 1 - 1e-10
+            # elif params_dt['guess'][i] < 0:
+            #     params_dt['guess'][i] = 1e-10
+            for j in range(200):
+                jac = _jac((params_dt['slop'][i], params_dt['threshold'][i], params_dt['guess'][i]), i)
+                params_dt['slop'][i] -= 0.001 * jac[0]
+                params_dt['threshold'][i] -= 0.001 * jac[1]
+                params_dt['guess'][i] -= 0.001 * jac[2]
+            if params_dt['guess'][i] > 1:
+                params_dt['guess'][i] = 1 - 1e-10
+            elif params_dt['guess'][i] < 0:
+                params_dt['guess'][i] = 1e-10
         return params_dt, delta_list, hess_list
 
     def _get_jac(self, dp, theta, guess, p_guess_val):
@@ -224,6 +292,7 @@ class _Logit3PLIrt(BaseEmIrt, Logit3PLMixin):
             # return params_dt
         # warnings.warn("no convergence")
         return params_dt
+
 
 class Irt(object):
 
