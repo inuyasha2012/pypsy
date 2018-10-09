@@ -5,7 +5,8 @@ __email__ = 'inuyasha021@163.com'
 __version__ = '0.0.1'
 
 from psy.cdm.irm import McmcHoDina, McmcDina, EmDina, MlDina
-from psy.irt.irm import Mirt, Irt
+from psy.irt.irm import Irt
+from psy.irt.mirm import Mirt
 from psy.irt.grm import Grm
 from psy.cat.tirt import SimAdaptiveTirt
 from psy.fa.rotations import GPForth

@@ -78,7 +78,7 @@ class Grm(object):
             for j in range(rep_len):
                 p_pre = 1 if j == 0 else p_val_dt[i][:, j - 1]
                 p = 0 if j == rep_len - 1 else p_val_dt[i][:, j]
-                loglik_val += np.dot(np.log(p_pre - p + 1e-200)[:, np.newaxis], scores[i][:,  j][np.newaxis])
+                loglik_val += np.dot(np.log(p_pre - p + 1e-10)[:, np.newaxis], scores[i][:,  j][np.newaxis])
         return np.exp(loglik_val)
 
     def _e_step(self, p_val_dt, weights):
@@ -110,10 +110,10 @@ class Grm(object):
             temp1 = _theta * right_dis[:, i] * (1 - p_pre - p)
             dloglik_val[-1] += np.sum(temp1)
             if i < rep_len - 1:
-                temp2 = right_dis[:, i] * pq / (p - p_pre + 1e-200)
+                temp2 = right_dis[:, i] * pq / (p - p_pre + 1e-10)
                 dloglik_val[i] += np.sum(temp2)
             if i > 0:
-                temp3 = right_dis[:, i] * pq_pre / (p_pre - p + 1e-200)
+                temp3 = right_dis[:, i] * pq_pre / (p_pre - p + 1e-10)
                 dloglik_val[i - 1] += np.sum(temp3)
         return dloglik_val
 
@@ -126,17 +126,17 @@ class Grm(object):
             p_pre, dp_pre = (1, 0) if i == 0 else (p_val[:, i - 1], pq_val[:, i - 1])
             p, dp = (0, 0) if i == rep_len - 1 else (p_val[:, i], pq_val[:, i])
             if i < rep_len - 1:
-                temp1 = full_dis * _theta * dp * (dp_pre - dp) / (p_pre - p + 1e-200)
+                temp1 = full_dis * _theta * dp * (dp_pre - dp) / (p_pre - p + 1e-10)
                 ddloglik_val[len_threshold:, i] += np.sum(temp1)
-                temp2 = full_dis * dp ** 2 / (p_pre - p + 1e-200)
+                temp2 = full_dis * dp ** 2 / (p_pre - p + 1e-10)
                 ddloglik_val[i, i] += -np.sum(temp2)
             if i > 0:
-                temp3 = full_dis * _theta * dp_pre * (dp - dp_pre) / (p_pre - p + 1e-200)
+                temp3 = full_dis * _theta * dp_pre * (dp - dp_pre) / (p_pre - p + 1e-10)
                 ddloglik_val[len_threshold:, i - 1] += np.sum(temp3, axis=0)
-                temp4 = full_dis * dp_pre ** 2 / (p_pre - p + 1e-200)
+                temp4 = full_dis * dp_pre ** 2 / (p_pre - p + 1e-10)
                 ddloglik_val[i - 1, i - 1] += -np.sum(temp4)
             if 0 < i < rep_len - 1:
-                ddloglik_val[i, i - 1] = np.sum(full_dis * dp * dp_pre / (p_pre - p + 1e-200))
+                ddloglik_val[i, i - 1] = np.sum(full_dis * dp * dp_pre / (p_pre - p + 1e-10))
             temp5 = full_dis * _theta ** 2 * (dp_pre - dp) ** 2 / (p - p_pre)
             ddloglik_val[-1, -1] += np.sum(temp5, axis=0)
         ddloglik_val += ddloglik_val.transpose() - np.diag(ddloglik_val.diagonal())

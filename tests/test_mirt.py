@@ -5,4 +5,4 @@ from psy import Mirt, data
 
 def test_mirt():
     score = data['lsat.dat']
-    Mirt(scores=score, dim_size=2).em()
+    Mirt(scores=score, dim_size=2).fit()
