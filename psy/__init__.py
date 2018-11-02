@@ -13,5 +13,5 @@ from psy.fa.rotations import GPForth
 from psy.fa.factors import Factor
 from psy.sem.cfa import cfa
 from psy.sem.sem import sem
-from psy.sem.ccfa import delta_i_ccfa, get_irt_parameter, get_thresholds
+from psy.sem.ccfa import delta_i_ccfa
 from psy.data.data import data

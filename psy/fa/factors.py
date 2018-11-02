@@ -7,9 +7,10 @@ class Factor(object):
 
     # 简单的因子分析，服务于mirt的初值估计
 
-    def __init__(self, scores, factors_num):
+    def __init__(self, factor_num, cor=None, scores=None):
         self._scores = scores
-        self._factors_num = factors_num
+        self._factor_num = factor_num
+        self._cor = cor
 
     @cached_property
     def cor(self):
@@ -24,9 +25,11 @@ class Factor(object):
 
     @property
     def mirt_loading(self):
-        cov = self.polycor
+        cov = self._cor
+        if cov is None:
+            cov = self.polycor
         score_eig = self._get_eigen(cov)
-        loadings = score_eig[1][:, :self._factors_num]
+        loadings = score_eig[1][:, :self._factor_num]
         return loadings
 
     @staticmethod
@@ -44,5 +47,5 @@ class Factor(object):
         cov = self.cor
         score_eig = self._get_eigen(cov)
         _loadings = score_eig[0] ** 0.5 * score_eig[1]
-        loadings = _loadings[:, :self._factors_num]
+        loadings = _loadings[:, :self._factor_num]
         return loadings
