@@ -26,6 +26,8 @@ class BaseModel(object):
         """
         不管是probit还是logit，都是用一样的参数估计算法，
         基于牛顿迭代的极大似然算法和贝叶斯最大后验算法
+        :param iter_method:
+        :param sigma:
         :param slop: ndarray(float), 多维向量，斜率，区分度
         :param threshold: ndarray(float), 单维向量，阈值，通俗度，难度
         :param init_theta: ndarray(int|float), 特质向量初值

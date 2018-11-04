@@ -104,7 +104,7 @@ class BaseIrt(object):
     def _init_value(self):
         thresholds = get_thresholds(self.scores)
         cor = get_polychoric_cor(self.scores, thresholds)
-        loadings = Factor(cor=cor, factor_num=1).mirt_loading
+        loadings = Factor(cor=cor, factor_num=self.dim).mirt_loading
         loadings_t = loadings.transpose()
         d = (1 - np.sum(loadings_t ** 2, axis=0)) ** 0.5
         init_slop = loadings_t / d * 1.702

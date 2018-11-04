@@ -6,9 +6,8 @@ from psy.irt.base import BaseEmIrt, ProbitMixin, LogitMixin, Logit3PLMixin, Base
 from psy.irt.trait import BayesLogitModel
 from psy.settings import X_WEIGHTS, X_NODES
 from scipy.optimize import minimize, fmin_bfgs
-from scipy.stats import truncnorm, norm
-import statsmodels.api as sm
-import sys
+from scipy.stats import truncnorm
+from scipy.stats import multivariate_normal
 
 class _Irt(BaseEmIrt):
 
@@ -411,58 +410,39 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
 
     def __init__(self, dim=1, *args, **kwargs):
         super(MCEMIrt1, self).__init__(*args, **kwargs)
-        # self.threshold = np.zeros(self.item_size)
-        # self.slop = np.ones((dim, self.item_size))
-        self.slop, self.threshold = self. _init_value()
-        self.threshold = self.threshold[0]
-        self.dim = dim
+        self.threshold = np.zeros(self.item_size)
+        self.slop = np.ones((dim, self.item_size))
+        # self.dim = dim
+        # self.slop, self.threshold = self. _init_value()
+        # self.threshold = self.threshold[0]
 
-    def _e_step(self, slop, threshold, point_size=15 * 25 + 10):
+    def _e_step(self, slop, threshold, point_size=25, burn=10, s=5):
         lower = np.zeros_like(self.scores, dtype=np.float)
         lower[self.scores == 0] = -np.inf
         upper = np.zeros_like(self.scores, dtype=np.float)
         upper[self.scores == 1] = np.inf
         theta = np.random.normal(size=(self.dim, self.person_size))
-        theta_ = 0
-        x_ = 0
-        x_b = 0
-        x_b_2 = 0
-        x_sigma = np.dot(slop, slop.T) + np.eye(self.dim)
-        v = np.linalg.inv(x_sigma)
-        count = 0
-        for i in range(point_size):
+        v = np.linalg.inv(np.dot(slop, slop.T) + np.eye(self.dim))
+        t_z = 0
+        t_x = 0
+        z_t_z = 0
+        z_t_x = 0
+        for i in range(point_size * s + burn):
             z_val = np.dot(theta.T, slop) + threshold
             x = truncnorm.rvs(lower, upper, loc=z_val)
             loc = np.dot(np.dot(v, slop), (x - threshold).T)
             theta = np.random.normal(loc, v)
-            if i >= 10 and (i - 10) % 15 == 0:
-                theta_ += theta
-                x_ += x
-            # x_b += x - threshold
-            # x_b_2 += (x - threshold) ** 2
+            if i >= burn and (i - burn) % s == 0:
+                t_z += np.sum(theta, keepdims=True)
+                t_x += np.sum(x, axis=0, keepdims=True)
+                z_t_z += theta.dot(theta.T)
+                z_t_x += theta.dot(x)
 
-        # aaa = np.sum(x_b / point_size + threshold, 0)
-        # bbb = np.sum(x_ / point_size, 0)
-        # ccc = np.sum(x_b / point_size, axis=0, keepdims=True).dot(slop.T).dot(v.T)
-        # ddd = np.sum(theta_ / point_size, keepdims=True)
-        _z = theta_ / 25
-        _x = x_ / 25
-        # _z = theta
-        # _x = x
-        t_z = np.sum(_z)
-        t_x = np.sum(_x, axis=0)
-        z_t_z = _z.dot(_z.T)
-        z_t_x = _z.dot(_x)
+        t_z /= point_size
+        t_x /= point_size
+        z_t_z /= point_size
+        z_t_x /= point_size
         return t_z, t_x, z_t_z, z_t_x
-
-    # def _m_step(self, y, x):
-    #     slop = np.zeros_like(self.slop)
-    #     threshold = np.zeros_like(self.threshold)
-    #     for i in range(self.item_size):
-    #         _y = y[:, i]
-    #         _x = sm.add_constant(x[0])
-    #         threshold[i], slop[:, i] = sm.OLS(_y, _x).fit().params
-    #     return slop, threshold
 
     def _m_step(self, t_z, t_x, z_t_z, z_t_x):
         temp1 = np.linalg.inv(z_t_z - np.dot(t_z.T, t_z) / self.person_size)
@@ -471,22 +451,10 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
         threshold = (t_x - np.dot(t_z, slop))/ self.person_size
         return slop, threshold
 
-    def _test_random(self):
-        self.r_s = np.random.uniform(1, 2, (1, 5))
-        self.r_t = np.random.normal(size=5)
-        z = np.random.normal(size=(1000, 1))
-        x = z.dot(self.r_s) + self.r_t
-        t_z = np.sum(z, keepdims=True)
-        t_x = np.sum(x, axis=0, keepdims=True)
-        z_t_z = z.T.dot(z)
-        z_t_x = z.T.dot(x)
-        return t_z, t_x, z_t_z, z_t_x
-
     def fit(self):
         slop = self.slop
         threshold = self.threshold
         for i in range(self._max_iter):
-            # t_z, t_x, z_t_z, z_t_x = self._test_random()
             t_z, t_x, z_t_z, z_t_x = self._e_step(slop, threshold)
             slop, threshold = self._m_step(t_z, t_x, z_t_z, z_t_x)
             print(slop)

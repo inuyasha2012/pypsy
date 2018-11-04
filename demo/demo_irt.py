@@ -22,10 +22,10 @@ score = data['lsat.dat']
 # score = data['lsat.dat']
 
 #
-# slop = np.random.uniform(0.7, 2, 20)
-# threshold = np.random.normal(0, 1, size=20)
+# slop = np.random.uniform(0.7, 2, 7)
+# threshold = np.random.normal(0, 1, size=7)
 # guess = np.random.uniform(0.05, 0.3, 1000)
-# theta = np.random.normal(0, 1, size=(1000, 1))
+# theta = np.random.normal(0, 1, size=(800, 1))
 
 # z = slop * theta + threshold
 
@@ -33,10 +33,10 @@ score = data['lsat.dat']
 
 # p = guess + (1 - guess) * p_logit
 
-# scores = np.random.binomial(1, p_logit)
+# score = np.random.binomial(1, p_logit)
 
 s = time.time()
-model = MCEMIrt1(scores=score, max_iter=1000)
+model = MCEMIrt1(scores=score, max_iter=1000, dim=1)
 res = model.fit()
 e = time.time()
 print(e - s)
