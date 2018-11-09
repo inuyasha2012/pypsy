@@ -2,12 +2,15 @@
 from __future__ import print_function
 import warnings
 import numpy as np
+from statsmodels.genmod.families.links import probit
+
 from psy.irt.base import BaseEmIrt, ProbitMixin, LogitMixin, Logit3PLMixin, BaseIrt
-from psy.irt.trait import BayesLogitModel
+from psy.irt.trait import BayesLogitModel, MLProbitModel
 from psy.settings import X_WEIGHTS, X_NODES
 from scipy.optimize import minimize, fmin_bfgs
 from scipy.stats import truncnorm
-from scipy.stats import multivariate_normal
+import statsmodels.api as sm
+
 
 class _Irt(BaseEmIrt):
 
@@ -279,7 +282,7 @@ class _Logit3PLIrt(BaseEmIrt, Logit3PLMixin):
         return params_dt
 
 
-class MCEMIrt(BaseIrt, LogitMixin):
+class MCEMIrt(BaseIrt, ProbitMixin):
 
     def _get_dp_n_ddp(self, right_dis, full_dis, p_val, *args, **kwargs):
         return right_dis - full_dis * p_val, full_dis * p_val * (1 - p_val)
@@ -330,8 +333,8 @@ class MCEMIrt(BaseIrt, LogitMixin):
         slop = self.slop
         threshold = self.threshold
         for i in range(self._max_iter):
-            theta = np.random.normal(size=(1000, self.dim))
-            prior = 1.0 / 1000
+            theta = np.random.normal(size=(50, self.dim))
+            prior = 1.0 / 50
             z_val = np.dot(theta, slop) + threshold
             p_val = self.p(z_val)
             full_dis, right_dis, loglik_val = self._e_step(p_val, prior)
@@ -412,37 +415,82 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
         super(MCEMIrt1, self).__init__(*args, **kwargs)
         self.threshold = np.zeros(self.item_size)
         self.slop = np.ones((dim, self.item_size))
-        # self.dim = dim
+        self.dim = dim
         # self.slop, self.threshold = self. _init_value()
         # self.threshold = self.threshold[0]
 
-    def _e_step(self, slop, threshold, point_size=25, burn=10, s=5):
-        lower = np.zeros_like(self.scores, dtype=np.float)
-        lower[self.scores == 0] = -np.inf
-        upper = np.zeros_like(self.scores, dtype=np.float)
-        upper[self.scores == 1] = np.inf
+    def _e_step(self, slop, threshold, point_size=25, burn=10, thin=5):
         theta = np.random.normal(size=(self.dim, self.person_size))
         v = np.linalg.inv(np.dot(slop, slop.T) + np.eye(self.dim))
         t_z = 0
         t_x = 0
         z_t_z = 0
         z_t_x = 0
-        for i in range(point_size * s + burn):
+        theta_ar = np.zeros((point_size, self.dim, self.person_size))
+        x_ar = np.zeros((point_size, self.person_size, self.item_size))
+        e = 0
+        d = 0
+        for i in range(point_size * thin + burn):
             z_val = np.dot(theta.T, slop) + threshold
+            # z_val[z_val > 12] = 12
+            # z_val[z_val < -12] = -12
+            lower = np.zeros_like(self.scores, dtype=np.float)
+            lower[self.scores == 0] = -np.inf
+            lower[self.scores == 1] = -z_val[self.scores == 1]
+            upper = np.zeros_like(self.scores, dtype=np.float)
+            upper[self.scores == 1] = np.inf
+            upper[self.scores == 0] = -z_val[self.scores == 0]
             x = truncnorm.rvs(lower, upper, loc=z_val)
             loc = np.dot(np.dot(v, slop), (x - threshold).T)
-            theta = np.random.normal(loc, v)
-            if i >= burn and (i - burn) % s == 0:
+            theta = np.random.normal(loc, v ** 0.5)
+            if i >= burn and (i - burn) % thin == 0:
                 t_z += np.sum(theta, keepdims=True)
                 t_x += np.sum(x, axis=0, keepdims=True)
                 z_t_z += theta.dot(theta.T)
                 z_t_x += theta.dot(x)
-
+                theta_ar[int((i - burn) / thin)] = theta
+                x_ar[int((i - burn) / thin)] = x
+                e += x - threshold
+                d += ((x - threshold) ** 2).sum(axis=1)
+        e /= point_size
+        d /= point_size
+        my_t_x = np.sum(e + threshold, axis=0)
+        my_t_z = (np.sum(e, axis=0).dot(slop.T)).dot(v.T)
+        my_z_t_z = v + v.dot(slop).dot(np.sum(d)).dot(slop.T).dot(v.T)
+        my_z_t_x = v.dot(slop).dot(np.sum(d + e.dot(threshold.T), axis=0))
+        # plt.plot(theta_ar.mean(0)[0])
+        # plt.show()
         t_z /= point_size
         t_x /= point_size
         z_t_z /= point_size
         z_t_x /= point_size
-        return t_z, t_x, z_t_z, z_t_x
+        return t_z, t_x, z_t_z, z_t_x, theta_ar
+
+    def ___m_step(self, x):
+        _x = x.mean(0)
+        _x = sm.add_constant(_x[0])
+        slop = np.zeros_like(self.slop)
+        threshold = np.zeros_like(self.threshold)
+        for i in range(self.item_size):
+            _y = self.scores[:, i]
+            threshold[i], slop[:, i] = sm.GLM(_y, _x, family=sm.families.Binomial(link=probit)).fit().params
+        return slop, threshold
+
+    def __m_step(self, x, pt_size=20):
+        slop = np.zeros_like(self.slop)
+        threshold = np.zeros_like(self.threshold)
+        person_size = self.person_size
+        _x = np.zeros((1, person_size * pt_size))
+        _y = np.zeros(person_size * pt_size)
+        for i in range(self.item_size):
+            for j in range(pt_size):
+                _x[:, j * person_size: (j + 1) * person_size] = x[j]
+                _y[j * person_size: (j + 1) * person_size] = self.scores[:, i]
+            _x = sm.add_constant(_x[0])
+            threshold[i], slop[:, i] = sm.GLM(_y, _x, family=sm.families.Binomial(link=probit)).fit().params
+            _x = np.zeros((1, person_size * pt_size))
+            _y = np.zeros(person_size * pt_size)
+        return slop, threshold
 
     def _m_step(self, t_z, t_x, z_t_z, z_t_x):
         temp1 = np.linalg.inv(z_t_z - np.dot(t_z.T, t_z) / self.person_size)
@@ -455,8 +503,12 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
         slop = self.slop
         threshold = self.threshold
         for i in range(self._max_iter):
-            t_z, t_x, z_t_z, z_t_x = self._e_step(slop, threshold)
-            slop, threshold = self._m_step(t_z, t_x, z_t_z, z_t_x)
+            t_z, t_x, z_t_z, z_t_x, x_ar = self._e_step(slop, threshold)
+            slop, threshold = self.__m_step(x_ar)
+            # slop, threshold = self.___m_step(x_ar)
+            # slop, threshold = self._m_step(t_z, t_x, z_t_z, z_t_x)
+            # threshold = threshold[0]
+            slop = slop
             print(slop)
             print(threshold)
         return slop, threshold

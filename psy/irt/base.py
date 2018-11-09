@@ -107,9 +107,9 @@ class BaseIrt(object):
         loadings = Factor(cor=cor, factor_num=self.dim).mirt_loading
         loadings_t = loadings.transpose()
         d = (1 - np.sum(loadings_t ** 2, axis=0)) ** 0.5
-        init_slop = loadings_t / d * 1.702
+        init_slop = loadings_t / d
         thresholds = np.array(thresholds).T
-        init_threshold = -thresholds / d * 1.702
+        init_threshold = -thresholds / d
         return init_slop, init_threshold
 
     def _lik(self, p_val):
