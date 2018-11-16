@@ -432,8 +432,6 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
         d = 0
         for i in range(point_size * thin + burn):
             z_val = np.dot(theta.T, slop) + threshold
-            # z_val[z_val > 12] = 12
-            # z_val[z_val < -12] = -12
             lower = np.zeros_like(self.scores, dtype=np.float)
             lower[self.scores == 0] = -np.inf
             lower[self.scores == 1] = -z_val[self.scores == 1]
@@ -452,14 +450,6 @@ class MCEMIrt1(BaseIrt, ProbitMixin):
                 x_ar[int((i - burn) / thin)] = x
                 e += x - threshold
                 d += ((x - threshold) ** 2).sum(axis=1)
-        e /= point_size
-        d /= point_size
-        my_t_x = np.sum(e + threshold, axis=0)
-        my_t_z = (np.sum(e, axis=0).dot(slop.T)).dot(v.T)
-        my_z_t_z = v + v.dot(slop).dot(np.sum(d)).dot(slop.T).dot(v.T)
-        my_z_t_x = v.dot(slop).dot(np.sum(d + e.dot(threshold.T), axis=0))
-        # plt.plot(theta_ar.mean(0)[0])
-        # plt.show()
         t_z /= point_size
         t_x /= point_size
         z_t_z /= point_size
